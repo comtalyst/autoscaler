@@ -18,9 +18,8 @@ package azure
 
 import (
 	"fmt"
-	"strings"
-
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
+	"strings"
 )
 
 const (

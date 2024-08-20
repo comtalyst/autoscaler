@@ -87,16 +87,8 @@ type Config struct {
 	Location       string `json:"location" yaml:"location"`
 	TenantID       string `json:"tenantId" yaml:"tenantId"`
 	SubscriptionID string `json:"subscriptionId" yaml:"subscriptionId"`
-	ClusterName    string `json:"clusterName" yaml:"clusterName"`
-	// ResourceGroup is the MC_ resource group where the nodes are located.
-	ResourceGroup string `json:"resourceGroup" yaml:"resourceGroup"`
-	// ClusterResourceGroup is the resource group where the cluster is located.
-	ClusterResourceGroup string `json:"clusterResourceGroup" yaml:"clusterResourceGroup"`
-	VMType               string `json:"vmType" yaml:"vmType"`
-
-	// ARMBaseURLForAPClient is the URL to use for operations for the VMs pool.
-	// It can override the default public ARM endpoint for VMs pool scale operations.
-	ARMBaseURLForAPClient string `json:"armBaseURLForAPClient" yaml:"armBaseURLForAPClient"`
+	ResourceGroup  string `json:"resourceGroup" yaml:"resourceGroup"`
+	VMType         string `json:"vmType" yaml:"vmType"`
 
 	// AuthMethod determines how to authorize requests for the Azure
 	// cloud. Valid options are "principal" (= the traditional
@@ -138,14 +130,14 @@ type Config struct {
 	CloudProviderBackoffDuration int     `json:"cloudProviderBackoffDuration,omitempty" yaml:"cloudProviderBackoffDuration,omitempty"`
 	CloudProviderBackoffJitter   float64 `json:"cloudProviderBackoffJitter,omitempty" yaml:"cloudProviderBackoffJitter,omitempty"`
 
+	// EnableForceDelete defines whether to enable force deletion on the APIs
+	EnableForceDelete bool `json:"enableForceDelete,omitempty" yaml:"enableForceDelete,omitempty"`
+
 	// EnableDynamicInstanceList defines whether to enable dynamic instance workflow for instance information check
 	EnableDynamicInstanceList bool `json:"enableDynamicInstanceList,omitempty" yaml:"enableDynamicInstanceList,omitempty"`
 
 	// EnableVmssFlex defines whether to enable Vmss Flex support or not
 	EnableVmssFlex bool `json:"enableVmssFlex,omitempty" yaml:"enableVmssFlex,omitempty"`
-
-	// (DEPRECATED, DO NOT USE) EnableForceDelete defines whether to enable force deletion on the APIs
-	EnableForceDelete bool `json:"enableForceDelete,omitempty" yaml:"enableForceDelete,omitempty"`
 
 	// (DEPRECATED, DO NOT USE) EnableDetailedCSEMessage defines whether to emit error messages in the CSE error body info
 	EnableDetailedCSEMessage bool `json:"enableDetailedCSEMessage,omitempty" yaml:"enableDetailedCSEMessage,omitempty"`
@@ -311,18 +303,19 @@ func BuildAzureConfig(configReader io.Reader) (*Config, error) {
 			}
 		}
 	}
-
-	// always read the following from environment variables since azure.json doesn't have these fields
-	cfg.ClusterName = os.Getenv("CLUSTER_NAME")
-	cfg.ClusterResourceGroup = os.Getenv("ARM_CLUSTER_RESOURCE_GROUP")
-	cfg.ARMBaseURLForAPClient = os.Getenv("ARM_BASE_URL_FOR_AP_CLIENT")
-
 	cfg.TrimSpace()
 
 	if cloudProviderRateLimit := os.Getenv("CLOUD_PROVIDER_RATE_LIMIT"); cloudProviderRateLimit != "" {
 		cfg.CloudProviderRateLimit, err = strconv.ParseBool(cloudProviderRateLimit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse CLOUD_PROVIDER_RATE_LIMIT: %q, %v", cloudProviderRateLimit, err)
+		}
+	}
+
+	if enableForceDelete := os.Getenv("AZURE_ENABLE_FORCE_DELETE"); enableForceDelete != "" {
+		cfg.EnableForceDelete, err = strconv.ParseBool(enableForceDelete)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse AZURE_ENABLE_FORCE_DELETE: %q, %v", enableForceDelete, err)
 		}
 	}
 
@@ -483,9 +476,7 @@ func (cfg *Config) TrimSpace() {
 	cfg.Location = strings.TrimSpace(cfg.Location)
 	cfg.TenantID = strings.TrimSpace(cfg.TenantID)
 	cfg.SubscriptionID = strings.TrimSpace(cfg.SubscriptionID)
-	cfg.ClusterName = strings.TrimSpace(cfg.ClusterName)
 	cfg.ResourceGroup = strings.TrimSpace(cfg.ResourceGroup)
-	cfg.ClusterResourceGroup = strings.TrimSpace(cfg.ClusterResourceGroup)
 	cfg.VMType = strings.TrimSpace(cfg.VMType)
 	cfg.AADClientID = strings.TrimSpace(cfg.AADClientID)
 	cfg.AADClientSecret = strings.TrimSpace(cfg.AADClientSecret)
