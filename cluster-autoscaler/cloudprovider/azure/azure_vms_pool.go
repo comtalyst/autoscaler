@@ -172,3 +172,8 @@ func (agentPool *VMsPool) Nodes() ([]cloudprovider.Instance, error) {
 func (agentPool *VMsPool) TemplateNodeInfo() (*schedulerframework.NodeInfo, error) {
 	return nil, cloudprovider.ErrNotImplemented
 }
+
+// AtomicIncreaseSize is not implemented.
+func (agentPool *VMsPool) AtomicIncreaseSize(delta int) error {
+	return cloudprovider.ErrNotImplemented
+}
