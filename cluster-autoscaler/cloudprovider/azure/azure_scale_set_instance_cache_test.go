@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2022-08-01/compute" //nolint SA1019 - deprecated package
-	"github.com/golang/mock/gomock"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2022-08-01/compute"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
 

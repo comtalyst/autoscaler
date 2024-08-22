@@ -5521,7 +5521,7 @@ var InstanceTypes = map[string]*InstanceType{
 		InstanceType: "Standard_ND96is_MI300X_v5",
 		SkuFamily:    "standardNDISv5MI300XFamily",
 		VCPU:         96,
-		MemoryMb:     1894400,
+		MemoryMb:     1945600,
 		GPU:          0,
 	},
 	"Standard_ND96isr_H100_v5": {
@@ -5535,7 +5535,7 @@ var InstanceTypes = map[string]*InstanceType{
 		InstanceType: "Standard_ND96isr_MI300X_v5",
 		SkuFamily:    "standardNDISv5MI300XFamily",
 		VCPU:         96,
-		MemoryMb:     1894400,
+		MemoryMb:     1945600,
 		GPU:          8,
 	},
 	"Standard_NP10s": {
