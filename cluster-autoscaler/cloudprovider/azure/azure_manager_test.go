@@ -147,7 +147,6 @@ func TestCreateAzureManagerValidConfig(t *testing.T) {
 	mockVMClient := mockvmclient.NewMockInterface(ctrl)
 	mockVMSSClient := mockvmssclient.NewMockInterface(ctrl)
 	mockVMSSClient.EXPECT().List(gomock.Any(), "fakeId").Return([]compute.VirtualMachineScaleSet{}, nil).Times(2)
-	mockVMClient.EXPECT().List(gomock.Any(), "fakeId").Return([]compute.VirtualMachine{}, nil).Times(2)
 	mockAzClient := &azClient{
 		virtualMachinesClient:         mockVMClient,
 		virtualMachineScaleSetsClient: mockVMSSClient,
@@ -230,7 +229,6 @@ func TestCreateAzureManagerValidConfigForStandardVMType(t *testing.T) {
 	mockVMClient := mockvmclient.NewMockInterface(ctrl)
 	mockVMClient.EXPECT().List(gomock.Any(), "fakeId").Return([]compute.VirtualMachine{}, nil).Times(2)
 	mockVMSSClient := mockvmssclient.NewMockInterface(ctrl)
-	mockVMSSClient.EXPECT().List(gomock.Any(), "fakeId").Return([]compute.VirtualMachineScaleSet{}, nil).Times(2)
 	mockAzClient := &azClient{
 		virtualMachinesClient:         mockVMClient,
 		virtualMachineScaleSetsClient: mockVMSSClient,
@@ -343,7 +341,6 @@ func TestCreateAzureManagerWithNilConfig(t *testing.T) {
 	mockVMClient := mockvmclient.NewMockInterface(ctrl)
 	mockVMSSClient := mockvmssclient.NewMockInterface(ctrl)
 	mockVMSSClient.EXPECT().List(gomock.Any(), "resourceGroup").Return([]compute.VirtualMachineScaleSet{}, nil).AnyTimes()
-	mockVMClient.EXPECT().List(gomock.Any(), "resourceGroup").Return([]compute.VirtualMachine{}, nil).AnyTimes()
 	mockAzClient := &azClient{
 		virtualMachinesClient:         mockVMClient,
 		virtualMachineScaleSetsClient: mockVMSSClient,
@@ -355,9 +352,6 @@ func TestCreateAzureManagerWithNilConfig(t *testing.T) {
 		TenantID:                     "tenantId",
 		SubscriptionID:               "subscriptionId",
 		ResourceGroup:                "resourceGroup",
-		ClusterName:                  "mycluster",
-		ClusterResourceGroup:         "myrg",
-		ARMBaseURLForAPClient:        "nodeprovisioner-svc.nodeprovisioner.svc.cluster.local",
 		VMType:                       "vmss",
 		AADClientID:                  "aadClientId",
 		AADClientSecret:              "aadClientSecret",
@@ -455,9 +449,6 @@ func TestCreateAzureManagerWithNilConfig(t *testing.T) {
 	t.Setenv("BACKOFF_DURATION", "1")
 	t.Setenv("BACKOFF_JITTER", "1")
 	t.Setenv("CLOUD_PROVIDER_RATE_LIMIT", "true")
-	t.Setenv("CLUSTER_NAME", "mycluster")
-	t.Setenv("ARM_CLUSTER_RESOURCE_GROUP", "myrg")
-	t.Setenv("ARM_BASE_URL_FOR_AP_CLIENT", "nodeprovisioner-svc.nodeprovisioner.svc.cluster.local")
 
 	t.Run("environment variables correctly set", func(t *testing.T) {
 		manager, err := createAzureManagerInternal(nil, cloudprovider.NodeGroupDiscoveryOptions{}, mockAzClient)
@@ -675,10 +666,7 @@ func TestGetFilteredAutoscalingGroupsVmss(t *testing.T) {
 	expectedScaleSets := []compute.VirtualMachineScaleSet{fakeVMSSWithTags(vmssName, map[string]*string{vmssTag: &vmssTagValue, "min": &min, "max": &max})}
 	mockVMSSClient := mockvmssclient.NewMockInterface(ctrl)
 	mockVMSSClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return(expectedScaleSets, nil).AnyTimes()
-	mockVMClient := mockvmclient.NewMockInterface(ctrl)
-	mockVMClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return([]compute.VirtualMachine{}, nil).AnyTimes()
 	manager.azClient.virtualMachineScaleSetsClient = mockVMSSClient
-	manager.azClient.virtualMachinesClient = mockVMClient
 	err := manager.forceRefresh()
 	assert.NoError(t, err)
 
@@ -694,9 +682,10 @@ func TestGetFilteredAutoscalingGroupsVmss(t *testing.T) {
 		minSize:                  minVal,
 		maxSize:                  maxVal,
 		manager:                  manager,
+		enableForceDelete:        manager.config.EnableForceDelete,
 		curSize:                  3,
 		sizeRefreshPeriod:        manager.azureCache.refreshInterval,
-		getVmssSizeRefreshPeriod: manager.azureCache.refreshInterval,
+		getVmssSizeRefreshPeriod: time.Duration(manager.azureCache.refreshInterval) * time.Second,
 		InstanceCache:            InstanceCache{instancesRefreshPeriod: defaultVmssInstancesRefreshPeriod},
 	}}
 	assert.True(t, assert.ObjectsAreEqualValues(expectedAsgs, asgs), "expected %#v, but found: %#v", expectedAsgs, asgs)
@@ -752,9 +741,6 @@ func TestFetchAutoAsgsVmss(t *testing.T) {
 	mockVMSSVMClient := mockvmssvmclient.NewMockInterface(ctrl)
 	mockVMSSVMClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup, vmssName, gomock.Any()).Return(expectedVMSSVMs, nil).AnyTimes()
 	manager.azClient.virtualMachineScaleSetVMsClient = mockVMSSVMClient
-	mockVMClient := mockvmclient.NewMockInterface(ctrl)
-	manager.azClient.virtualMachinesClient = mockVMClient
-	mockVMClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return([]compute.VirtualMachine{}, nil).AnyTimes()
 	err := manager.forceRefresh()
 	assert.NoError(t, err)
 

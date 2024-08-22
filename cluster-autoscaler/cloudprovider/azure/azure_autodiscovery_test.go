@@ -17,10 +17,9 @@ limitations under the License.
 package azure
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
+	"testing"
 )
 
 func TestParseLabelAutoDiscoverySpecs(t *testing.T) {
