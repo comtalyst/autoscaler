@@ -17,10 +17,8 @@ limitations under the License.
 package azure
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,8 +51,7 @@ type AzureCloudProvider struct {
 }
 
 // BuildAzureCloudProvider creates new AzureCloudProvider
-func BuildAzureCloudProvider(azureManager *AzureManager, resourceLimiter *cloudprovider.ResourceLimiter) (cloudprovider.CloudProvider,
-	error) {
+func BuildAzureCloudProvider(azureManager *AzureManager, resourceLimiter *cloudprovider.ResourceLimiter) (cloudprovider.CloudProvider, error) {
 	azure := &AzureCloudProvider{
 		azureManager:    azureManager,
 		resourceLimiter: resourceLimiter,
@@ -88,6 +85,7 @@ func (azure *AzureCloudProvider) GetAvailableGPUTypes() map[string]struct{} {
 // any GPUs, it returns nil.
 func (azure *AzureCloudProvider) GetNodeGpuConfig(node *apiv1.Node) *cloudprovider.GpuConfig {
 	return gpu.GetNodeGPUFromCloudProvider(azure, node)
+
 }
 
 // NodeGroups returns all node groups configured for this cloud provider.
@@ -95,8 +93,9 @@ func (azure *AzureCloudProvider) NodeGroups() []cloudprovider.NodeGroup {
 	asgs := azure.azureManager.getNodeGroups()
 
 	ngs := make([]cloudprovider.NodeGroup, len(asgs))
-	copy(ngs, asgs)
-
+	for i, asg := range asgs {
+		ngs[i] = asg
+	}
 	return ngs
 }
 
@@ -116,27 +115,9 @@ func (azure *AzureCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovid
 	return azure.azureManager.GetNodeGroupForInstance(ref)
 }
 
-// HasInstance returns whether a given node has a corresponding instance in this cloud provider.
-//
-// Used to prevent undercount of existing VMs (taint-based overcount of deleted VMs),
-// and so should not return false, nil (no instance) if uncertain; return error instead.
-// (Think "has instance for sure, else error".) Returning an error causes fallback to taint-based
-// determination; use ErrNotImplemented for silent fallback, any other error will be logged.
-//
-// Expected behavior (should work for VMSS Uniform/Flex, and VMs):
-// -  exists            : return true, nil
-// - !exists            : return *,    ErrNotImplemented (could use custom error for autoscaled nodes)
-// - unimplemented case : return *,    ErrNotImplemented
-// - any other error    : return *,    error
-func (azure *AzureCloudProvider) HasInstance(node *apiv1.Node) (bool, error) {
-	if node.Spec.ProviderID == "" {
-		return false, fmt.Errorf("ProviderID for node: %s is empty, skipped", node.Name)
-	}
-
-	if !strings.HasPrefix(node.Spec.ProviderID, "azure://") {
-		return false, fmt.Errorf("invalid azure ProviderID prefix for node: %s, skipped", node.Name)
-	}
-	return azure.azureManager.azureCache.HasInstance(node.Spec.ProviderID)
+// HasInstance returns whether a given node has a corresponding instance in this cloud provider
+func (azure *AzureCloudProvider) HasInstance(*apiv1.Node) (bool, error) {
+	return true, cloudprovider.ErrNotImplemented
 }
 
 // Pricing returns pricing model for this cloud provider or error if not available.
@@ -183,21 +164,20 @@ func (m *azureRef) String() string {
 }
 
 // BuildAzure builds Azure cloud provider, manager etc.
-func BuildAzure(opts config.AutoscalingOptions, do cloudprovider.NodeGroupDiscoveryOptions,
-	rl *cloudprovider.ResourceLimiter) cloudprovider.CloudProvider {
-	var cfg io.ReadCloser
+func BuildAzure(opts config.AutoscalingOptions, do cloudprovider.NodeGroupDiscoveryOptions, rl *cloudprovider.ResourceLimiter) cloudprovider.CloudProvider {
+	var config io.ReadCloser
 	if opts.CloudConfig != "" {
 		klog.Infof("Creating Azure Manager using cloud-config file: %v", opts.CloudConfig)
 		var err error
-		cfg, err = os.Open(opts.CloudConfig)
+		config, err = os.Open(opts.CloudConfig)
 		if err != nil {
 			klog.Fatalf("Couldn't open cloud provider configuration %s: %#v", opts.CloudConfig, err)
 		}
-		defer cfg.Close()
+		defer config.Close()
 	} else {
 		klog.Info("Creating Azure Manager with default configuration.")
 	}
-	manager, err := CreateAzureManager(cfg, do)
+	manager, err := CreateAzureManager(config, do)
 	if err != nil {
 		klog.Fatalf("Failed to create Azure Manager: %v", err)
 	}
